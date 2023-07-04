@@ -8,11 +8,9 @@ import (
 type State int
 
 const (
-	StateClosed State = iota
-	StateOpen
-	StateHalfOpen
-
-	TimeFormat = "2006-01-02 15:04:05"
+	StateClosed   State = iota // 关闭
+	StateOpen                  // 开启
+	StateHalfOpen              // 半开
 )
 
 var (

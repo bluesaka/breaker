@@ -4,12 +4,13 @@ import "time"
 
 type Option func(o *Breaker)
 
+// StrategyOption 策略选项
 type StrategyOption struct {
-	Strategy                int
-	FailThreshold           uint64
-	ContinuousFailThreshold uint64
-	FailRate                float64
-	MinCall                 uint64
+	Strategy                int     // 策略类型
+	FailThreshold           uint64  // 失败数阈值 (失败数策略)
+	ContinuousFailThreshold uint64  // 连续失败数阈值 (连续失败数策略)
+	FailRate                float64 // 失败率阈值 (失败率策略)
+	MinCall                 uint64  // 最小请求数 (失败率策略)
 }
 
 // WithName returns a function to set the name of Breaker

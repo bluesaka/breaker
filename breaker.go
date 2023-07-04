@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Breaker 熔断器结构体
+// Breaker 熔断器
 type Breaker struct {
 	name            string        // 熔断器名称
 	state           State         // 熔断器状态

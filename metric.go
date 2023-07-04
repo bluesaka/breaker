@@ -2,14 +2,15 @@ package breaker
 
 import "time"
 
+// Metric 指标
 type Metric struct {
-	WindowBatch       uint64
-	WindowStartTime   time.Time
-	TotalRequest      uint64 // 总请求数
-	TotalSuccess      uint64 // 总成功数
-	TotalFail         uint64 // 总失败数
-	ContinuousSuccess uint64 // 连续成功数
-	ContinuousFail    uint64 // 连续失败数
+	WindowBatch       uint64    // 窗口批号
+	WindowStartTime   time.Time // 窗口开始时间
+	TotalRequest      uint64    // 总请求数
+	TotalSuccess      uint64    // 总成功数
+	TotalFail         uint64    // 总失败数
+	ContinuousSuccess uint64    // 连续成功数
+	ContinuousFail    uint64    // 连续失败数
 }
 
 // NewWindowBatch new window batch

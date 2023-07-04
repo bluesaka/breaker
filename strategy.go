@@ -1,9 +1,9 @@
 package breaker
 
 const (
-	StrategyFail = iota + 1
-	StrategyContinuousFail
-	StrategyFailRate
+	StrategyFail           = iota + 1 // 失败数策略
+	StrategyContinuousFail            // 连续失败数策略
+	StrategyFailRate                  // 失败率策略
 )
 
 // StrategyFn breaker strategy function on request error
