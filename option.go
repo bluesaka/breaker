@@ -12,17 +12,31 @@ type StrategyOption struct {
 	MinCall                 uint64
 }
 
-// WithName returns a function to set the name of a Breaker
+// WithName returns a function to set the name of Breaker
 func WithName(s string) Option {
 	return func(options *Breaker) {
 		options.name = s
 	}
 }
 
-// WithWindowInterval returns a function to set the windowInterval of a Breaker
+// WithWindowInterval returns a function to set the windowInterval of Breaker
 func WithWindowInterval(d time.Duration) Option {
 	return func(options *Breaker) {
 		options.windowInterval = d
+	}
+}
+
+// WithCoolDownTime returns a function to set the coolDownTime of Breaker
+func WithCoolDownTime(d time.Duration) Option {
+	return func(options *Breaker) {
+		options.coolDownTime = d
+	}
+}
+
+// WithHalfOpenMaxCall returns a function to set the halfOpenMaxCall of Breaker
+func WithHalfOpenMaxCall(d uint64) Option {
+	return func(options *Breaker) {
+		options.halfOpenMaxCall = d
 	}
 }
 

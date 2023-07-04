@@ -12,7 +12,7 @@ type StrategyFn func(metric Metric) bool
 // FailStrategyFn breaker strategy function based on fail count
 func FailStrategyFn(threshold uint64) StrategyFn {
 	return func(metric Metric) bool {
-		return metric.CountFail >= threshold
+		return metric.TotalFail >= threshold
 	}
 }
 
@@ -26,9 +26,9 @@ func ContinuousFailStrategyFn(threshold uint64) StrategyFn {
 // ContinuousFailStrategyFn breaker strategy function based on fail rate
 func FailRateStrategyFn(rate float64, minCall uint64) StrategyFn {
 	return func(metric Metric) bool {
-		if metric.CountAll < minCall {
+		if metric.TotalRequest < minCall {
 			return false
 		}
-		return float64(metric.CountFail)/float64(metric.CountAll) >= rate
+		return float64(metric.TotalFail)/float64(metric.TotalRequest) >= rate
 	}
 }

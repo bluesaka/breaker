@@ -5,11 +5,11 @@ import "time"
 type Metric struct {
 	WindowBatch       uint64
 	WindowStartTime   time.Time
-	CountAll          uint64
-	CountSuccess      uint64
-	CountFail         uint64
-	ContinuousSuccess uint64
-	ContinuousFail    uint64
+	TotalRequest      uint64 // 总请求数
+	TotalSuccess      uint64 // 总成功数
+	TotalFail         uint64 // 总失败数
+	ContinuousSuccess uint64 // 连续成功数
+	ContinuousFail    uint64 // 连续失败数
 }
 
 // NewWindowBatch new window batch
@@ -19,25 +19,25 @@ func (m *Metric) NewWindowBatch() {
 
 // onSuccess on success call
 func (m *Metric) onSuccess() {
-	m.CountAll++
-	m.CountSuccess++
+	m.TotalRequest++
+	m.TotalSuccess++
 	m.ContinuousSuccess++
-	m.CountFail = 0
+	m.ContinuousFail = 0
 }
 
 // onFail on fail call
 func (m *Metric) onFail() {
-	m.CountAll++
-	m.CountFail++
+	m.TotalRequest++
+	m.TotalFail++
 	m.ContinuousFail++
 	m.ContinuousSuccess = 0
 }
 
 // OnReset reset window
 func (m *Metric) OnReset() {
-	m.CountAll = 0
-	m.CountSuccess = 0
-	m.CountFail = 0
+	m.TotalRequest = 0
+	m.TotalSuccess = 0
+	m.TotalFail = 0
 	m.ContinuousSuccess = 0
 	m.ContinuousFail = 0
 }

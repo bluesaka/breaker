@@ -1,43 +1,37 @@
 package breaker
 
 import (
-	"errors"
 	"log"
 	"sync"
 	"time"
 )
 
-var (
-	ErrStateOpen     = errors.New("circuit breaker is open")
-	ErrStateHalfOpen = errors.New("circuit breaker is half-open, too many calls")
-)
-
-// Breaker represents a circuit breaker.
+// Breaker 熔断器结构体
 type Breaker struct {
-	name            string        // breaker name
-	state           State         // breaker state
-	mu              sync.RWMutex  // rw lock
-	stateOpenTime   time.Time     // time of breaker open
-	windowInterval  time.Duration // metric window interval
-	sleepTimeout    time.Duration // breaker cool-down period
-	metric          Metric        // breaker window metric
-	halfOpenMaxCall uint64        // max call when breaker is half-open
-	strategyFn      StrategyFn    // breaker strategy function
+	name            string        // 熔断器名称
+	state           State         // 熔断器状态
+	halfOpenMaxCall uint64        // 半开期间最大请求数（半开期间，若请求前的总请求数大于此则丢弃，若请求后的连续成功数大于此则关闭熔断器）
+	mu              sync.RWMutex  // 互斥锁
+	openTime        time.Time     // 熔断器打开时间
+	windowInterval  time.Duration // 窗口间隔
+	coolDownTime    time.Duration // 冷却时间（从开到半开的时间间隔）
+	metric          Metric        // 指标
+	strategyFn      StrategyFn    // 熔断策略
 }
 
 const (
-	DefaultWindowInterval          = time.Second * 5
-	DefaultSleepTimeout            = time.Second * 6
-	DefaultHalfOpenMaxCall         = 5
-	DefaultFailThreshold           = 3
-	DefaultContinuousFailThreshold = 2
-	DefaultFailRate                = 0.6
-	DefaultMinCall                 = 2
+	DefaultWindowInterval          = time.Second // 默认窗口间隔
+	DefaultCoolDownTime            = time.Second // 默认冷却时间
+	DefaultHalfOpenMaxCall         = 5           // 默认半开期间最大请求数
+	DefaultFailThreshold           = 10          // 默认失败数阈值
+	DefaultContinuousFailThreshold = 10          // 默认连续失败数阈值
+	DefaultFailRate                = 0.6         // 默认失败率阈值
+	DefaultMinCall                 = 10          // 默认失败率策略的最小请求数
 )
 
 var defaultBreaker = Breaker{
 	windowInterval:  DefaultWindowInterval,
-	sleepTimeout:    DefaultSleepTimeout,
+	coolDownTime:    DefaultCoolDownTime,
 	halfOpenMaxCall: DefaultHalfOpenMaxCall,
 	strategyFn:      FailStrategyFn(DefaultFailThreshold),
 }
@@ -49,15 +43,15 @@ func NewBreaker(opts ...Option) *Breaker {
 	for _, opt := range opts {
 		opt(breaker)
 	}
-	if len(breaker.name) == 0 {
-		breaker.name = "rand-breaker-name"
+	if breaker.name == "" {
+		breaker.name = "breakerName"
 	}
 	breaker.newWindow(time.Now())
 	return breaker
 }
 
-// Call call fn
-func (b *Breaker) Call(fn func() error) error {
+// Do do fn
+func (b *Breaker) Do(fn func() error) error {
 	log.Printf("start call, breaker: %s, state: %v\n", b.name, b.state)
 	// before call
 	if err := b.beforeCall(); err != nil {
@@ -67,21 +61,21 @@ func (b *Breaker) Call(fn func() error) error {
 			b.name,
 			b.state,
 			b.metric.WindowBatch,
-			b.metric.WindowStartTime.Format("2006-01-02 15:04:05"),
-			b.metric.CountAll,
-			b.metric.CountSuccess,
-			b.metric.CountFail,
+			b.metric.WindowStartTime.Format(TimeFormat),
+			b.metric.TotalRequest,
+			b.metric.TotalSuccess,
+			b.metric.TotalFail,
 			b.metric.ContinuousSuccess,
 			b.metric.ContinuousFail,
 		)
 		return err
 	}
 
-	// panic handle
+	// recover
 	defer func() {
 		if err := recover(); err != nil {
 			b.afterCall(false)
-			panic(err)
+			//panic(err)
 		}
 	}()
 
@@ -95,10 +89,10 @@ func (b *Breaker) Call(fn func() error) error {
 		b.name,
 		b.state,
 		b.metric.WindowBatch,
-		b.metric.WindowStartTime.Format("2006-01-02 15:04:05"),
-		b.metric.CountAll,
-		b.metric.CountSuccess,
-		b.metric.CountFail,
+		b.metric.WindowStartTime.Format(TimeFormat),
+		b.metric.TotalRequest,
+		b.metric.TotalSuccess,
+		b.metric.TotalFail,
 		b.metric.ContinuousSuccess,
 		b.metric.ContinuousFail,
 	)
@@ -113,8 +107,8 @@ func (b *Breaker) beforeCall() error {
 	now := time.Now()
 	switch b.state {
 	case StateOpen:
-		// cool down
-		if b.stateOpenTime.Add(b.sleepTimeout).Before(now) {
+		// 过了冷却期，更新熔断器状态为半开
+		if b.openTime.Add(b.coolDownTime).Before(now) {
 			b.changeState(StateHalfOpen, now)
 			log.Printf("breaker: %s cool down passed, switch to half-open\n", b.name)
 			return nil
@@ -122,7 +116,8 @@ func (b *Breaker) beforeCall() error {
 		log.Printf("breaker: %s is open, drop request\n", b.name)
 		return ErrStateOpen
 	case StateHalfOpen:
-		if b.metric.CountAll >= b.halfOpenMaxCall {
+		// 请求数 ≥ 半开最大请求数，丢弃请求
+		if b.metric.TotalRequest >= b.halfOpenMaxCall {
 			log.Printf("breaker: %s is half-open, drop request that beyond max threshold\n", b.name)
 			return ErrStateHalfOpen
 		}
@@ -145,7 +140,7 @@ func (b *Breaker) afterCall(result bool) {
 	}
 }
 
-// new Window create new window
+// newWindow create new window
 func (b *Breaker) newWindow(t time.Time) {
 	log.Println("newWindow....")
 	b.metric.NewWindowBatch()
@@ -153,14 +148,14 @@ func (b *Breaker) newWindow(t time.Time) {
 	switch b.state {
 	case StateClosed:
 		if b.windowInterval == 0 {
-			b.metric.WindowStartTime = time.Time{}
+			b.metric.WindowStartTime = time.Now()
 		} else {
 			b.metric.WindowStartTime = t.Add(b.windowInterval)
 		}
 	case StateOpen:
-		b.metric.WindowStartTime = t.Add(b.sleepTimeout)
+		b.metric.WindowStartTime = t.Add(b.coolDownTime)
 	default:
-		b.metric.WindowStartTime = time.Time{}
+		b.metric.WindowStartTime = time.Now()
 	}
 }
 
@@ -177,7 +172,9 @@ func (b *Breaker) onFail(t time.Time) {
 	b.metric.onFail()
 	switch b.state {
 	case StateClosed:
+		log.Printf("---->%+v\n", b.metric)
 		if b.strategyFn(b.metric) {
+			log.Println("<------fail")
 			b.changeState(StateOpen, t)
 		}
 	case StateHalfOpen:
@@ -193,6 +190,6 @@ func (b *Breaker) changeState(state State, t time.Time) {
 	b.state = state
 	b.newWindow(t)
 	if state == StateOpen {
-		b.stateOpenTime = t
+		b.openTime = t
 	}
 }
