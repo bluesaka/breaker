@@ -41,21 +41,3 @@
 +----------------+                   +----------------+                 +----------------+
 
 ```
-
-### 相关算法
-```
-Google SRE
-max(0, (requests - K * accepts) / (requests + 1))
-
-B站kratos
-https://github.com/go-kratos/kratos/tree/master/pkg/net/netutil/breaker
-
-好未来go-zero
-https://github.com/tal-tech/go-zero/tree/master/core/breaker
-```
-
-### 使用示例
-
-```
-breaker.Do()
-```

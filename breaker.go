@@ -1,7 +1,6 @@
 package breaker
 
 import (
-	"log"
 	"sync"
 	"time"
 )
@@ -52,22 +51,8 @@ func NewBreaker(opts ...Option) *Breaker {
 
 // Do do fn
 func (b *Breaker) Do(fn func() error) error {
-	log.Printf("start call, breaker: %s, state: %v\n", b.name, b.state)
 	// before call
 	if err := b.beforeCall(); err != nil {
-		log.Printf("end call with error, err: %v, name: %s, state: %v, batch: %d, window start time: %v, "+
-			"metric: (all: %d, success: %d, fail: %d, cSuccess: %d, cFail: %d)\n",
-			err,
-			b.name,
-			b.state,
-			b.metric.WindowBatch,
-			b.metric.WindowStartTime.Format(TimeFormat),
-			b.metric.TotalRequest,
-			b.metric.TotalSuccess,
-			b.metric.TotalFail,
-			b.metric.ContinuousSuccess,
-			b.metric.ContinuousFail,
-		)
 		return err
 	}
 
@@ -84,18 +69,6 @@ func (b *Breaker) Do(fn func() error) error {
 
 	// after call
 	b.afterCall(err == nil)
-	log.Printf("end call, name: %s, state:%v, batch: %d, window start time: %v, "+
-		"metric: (all: %d, success: %d, fail: %d, cSuccess: %d, cFail: %d)\n",
-		b.name,
-		b.state,
-		b.metric.WindowBatch,
-		b.metric.WindowStartTime.Format(TimeFormat),
-		b.metric.TotalRequest,
-		b.metric.TotalSuccess,
-		b.metric.TotalFail,
-		b.metric.ContinuousSuccess,
-		b.metric.ContinuousFail,
-	)
 
 	return err
 }
@@ -110,15 +83,12 @@ func (b *Breaker) beforeCall() error {
 		// 过了冷却期，更新熔断器状态为半开
 		if b.openTime.Add(b.coolDownTime).Before(now) {
 			b.changeState(StateHalfOpen, now)
-			log.Printf("breaker: %s cool down passed, switch to half-open\n", b.name)
 			return nil
 		}
-		log.Printf("breaker: %s is open, drop request\n", b.name)
 		return ErrStateOpen
 	case StateHalfOpen:
 		// 请求数 ≥ 半开最大请求数，丢弃请求
 		if b.metric.TotalRequest >= b.halfOpenMaxCall {
-			log.Printf("breaker: %s is half-open, drop request that beyond max threshold\n", b.name)
 			return ErrStateHalfOpen
 		}
 	default:
@@ -142,8 +112,7 @@ func (b *Breaker) afterCall(result bool) {
 
 // newWindow create new window
 func (b *Breaker) newWindow(t time.Time) {
-	log.Println("newWindow....")
-	b.metric.NewWindowBatch()
+	//b.metric.NewWindowBatch()
 	b.metric.OnReset()
 	switch b.state {
 	case StateClosed:
@@ -172,9 +141,7 @@ func (b *Breaker) onFail(t time.Time) {
 	b.metric.onFail()
 	switch b.state {
 	case StateClosed:
-		log.Printf("---->%+v\n", b.metric)
 		if b.strategyFn(b.metric) {
-			log.Println("<------fail")
 			b.changeState(StateOpen, t)
 		}
 	case StateHalfOpen:
