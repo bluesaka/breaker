@@ -5,19 +5,6 @@ import (
 	"time"
 )
 
-// Breaker 熔断器
-type Breaker struct {
-	name            string        // 熔断器名称
-	state           State         // 熔断器状态
-	halfOpenMaxCall uint64        // 半开期间最大请求数（半开期间，若请求前的总请求数大于此则丢弃，若请求后的连续成功数大于此则关闭熔断器）
-	mu              sync.RWMutex  // 互斥锁
-	openTime        time.Time     // 熔断器打开时间
-	windowInterval  time.Duration // 窗口间隔
-	coolDownTime    time.Duration // 冷却时间（从开到半开的时间间隔）
-	metric          Metric        // 指标
-	strategyFn      StrategyFn    // 熔断策略
-}
-
 const (
 	DefaultWindowInterval          = time.Second // 默认窗口间隔
 	DefaultCoolDownTime            = time.Second // 默认冷却时间
@@ -33,6 +20,19 @@ var defaultBreaker = Breaker{
 	coolDownTime:    DefaultCoolDownTime,
 	halfOpenMaxCall: DefaultHalfOpenMaxCall,
 	strategyFn:      FailStrategyFn(DefaultFailThreshold),
+}
+
+// Breaker 熔断器
+type Breaker struct {
+	name            string        // 熔断器名称
+	state           State         // 熔断器状态
+	halfOpenMaxCall uint64        // 半开期间最大请求数（半开期间，若请求前的总请求数大于此则丢弃，若请求后的连续成功数大于此则关闭熔断器）
+	mu              sync.RWMutex  // 互斥锁
+	openTime        time.Time     // 熔断器打开时间
+	windowInterval  time.Duration // 窗口间隔
+	coolDownTime    time.Duration // 冷却时间（从开到半开的时间间隔）
+	metric          Metric        // 指标
+	strategyFn      StrategyFn    // 熔断策略
 }
 
 // NewBreaker returns a Breaker object.

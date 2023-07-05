@@ -14,7 +14,7 @@ const (
 )
 
 var (
-	ErrStateOpen     = errors.New("circuit breaker is open, drop request")
+	ErrStateOpen     = errors.New("circuit breaker is open")
 	ErrStateHalfOpen = errors.New("circuit breaker is half-open, too many calls")
 )
 
