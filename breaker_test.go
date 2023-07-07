@@ -26,8 +26,13 @@ func TestBreaker(t *testing.T) {
 	//	MinCall:  10,
 	//}
 
-	breaker := NewBreaker(WithName("breakerName"), WithWindowInterval(time.Second), WithCoolDownTime(time.Second),
-		WithHalfOpenMaxCall(2), WithStrategyOption(strategyFailOpt))
+	breaker := NewBreaker(
+		WithName("breakerName"),
+		WithWindowInterval(time.Second),
+		WithCoolDownTime(time.Second),
+		WithHalfOpenMaxCall(2),
+		WithStrategyOption(strategyFailOpt),
+	)
 
 	for i := 0; i < 20; i++ {
 		log.Println("i:", i)
